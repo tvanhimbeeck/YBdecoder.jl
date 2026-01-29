@@ -79,7 +79,7 @@ function diagpropagation!(x::Int,y::Int,bs::Bondstate{T}) where {T<:Number}
     @argcheck bs.d[x-1,y]==1 && bs.d[x,y-1]==1
 
     
-    @info "process vertex $((x,y))"
+    #@info "process vertex $((x,y))"
 
     #R1 = exactsummation_fixedcorners(bs,0,0)
 
@@ -90,14 +90,14 @@ function diagpropagation!(x::Int,y::Int,bs::Bondstate{T}) where {T<:Number}
     @argcheck map(typeof,(v0,a,b,c,d))==(T,T,T,T,T)
 
     input = (v0,a,b,c,d)
-   
+    
+    R = T(0)
+    (v2,A,B,C,D) = T.((0,0,0,0,0))
     try
         (R,ans) = transfer_exceptions(input...)
         (v2,A,B,C,D) = ans
     catch
         error("error at vertex $((x,y))")
-        R = T(NaN)
-        (v2,A,B,C,D) = T.((NaN,NaN,NaN,NaN))
     end
 
     bs.R *= R

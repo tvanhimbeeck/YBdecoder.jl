@@ -169,22 +169,27 @@ function surfacecode_simulate_many(H::Int,L::Int,px;maxtrials=1000,maxfailure=10
 end 
 
 function surfacecode_errorcurve(H::Int,L::Int,prange;maxtrials=1000,maxfailure=100)
-    prob = zeros(length(prange))
+    errorrate = zeros(length(prange))
+    abortrate = zeros(length(prange))
     for i in eachindex(prange)
         @info "p = $(prange[i])"
-        prob[i] = surfacecode_simulate_many(H,L,prange[i];maxtrials=maxtrials,maxfailure=maxfailure)
+        (er,ar)  = surfacecode_simulate_many(H,L,prange[i];maxtrials=maxtrials,maxfailure=maxfailure)
+        errorrate[i] = er
+        abortrate[i] = ar
     end
-    return prob
+    return (errorrate,abortrate)
 end 
 
 function surfacecode_thresholdcurve(Lrange,prange;maxtrials=1000,maxfailure=100)
-    proball = zeros(length(Lrange),length(prange))
+    errorrates = zeros(length(Lrange),length(prange))
+    abortrates = zeros(length(Lrange),length(prange))
     for l in 1:length(Lrange)
         @info "L = $(Lrange[l])"
-        prob = surfacecode_errorcurve(Lrange[l],Lrange[l],prange,maxtrials=maxtrials,maxfailure=maxfailure)
-        proball[l,:] = prob
+        (er,ar) = surfacecode_errorcurve(Lrange[l],Lrange[l],prange,maxtrials=maxtrials,maxfailure=maxfailure)
+        errorrates[l,:] = er
+        abortrates[l,:] = ar
     end
-    return proball
+    return (errorrates,abortrates)
 end
 
 
