@@ -152,7 +152,7 @@ function surfacecode_simulate_many(H::Int,L::Int,px;maxtrials=1000,maxfailure=10
     ntrials = 0
     nabort = 0
     decodingsuccess = 0
-    while nfailure <= maxfailure && ntrials <= maxtrials
+    while nfailure + nabort <= maxfailure && ntrials <= maxtrials
         decodingsuccess = 0
         try 
             decodingsuccess = surfacecode_simulate(H,L,px)
