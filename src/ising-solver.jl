@@ -77,7 +77,10 @@ function diagpropagation!(x::Int,y::Int,bs::Bondstate{T}) where {T<:Number}
     @argcheck (0 <= x <= bs.H) && (0<= y <= bs.L)
     @argcheck bs.d[x-1,y]==1 && bs.d[x,y-1]==1
 
-    R1 = exactsummation_fixedcorners(bs,0,0)
+    
+    @info "process vertex $((x,y))"
+
+    #R1 = exactsummation_fixedcorners(bs,0,0)
 
     v0 = bs.d[x-1,y-1]
     (a,b) = (bs.h[x,y-1],bs.v[x-1,y])
@@ -98,11 +101,11 @@ function diagpropagation!(x::Int,y::Int,bs::Bondstate{T}) where {T<:Number}
     bs.v[x,y] = C
     bs.h[x,y] = D
     
-    R2 = exactsummation_fixedcorners(bs,0,0)
-    if abs(R1/R2-1)>0.001
+    #R2 = exactsummation_fixedcorners(bs,0,0)
+#=     if abs(R1/R2-1)>0.001
         @info "non exact bond propagation R1 = $(R1) -> R2 = $(R2) at vertex $((x,y))"
         @info "with parameters $((v0,a,b,c,d)) to $((v2,A,B,C,D))"
-    end
+    end =#
     return bs.R
 end
 
@@ -114,7 +117,6 @@ function diagonalsimplification!(bs::Bondstate,delta1::Int,delta2::Int)
 
     while x<=bs.H && y<=bs.L
         #@info "process diagonal $(x+y)"
-        @info "process vertex $((x,y))"
         diagpropagation!(x,y,bs)
         #display(bs)
         x+=1
