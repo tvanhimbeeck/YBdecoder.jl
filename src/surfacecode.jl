@@ -1,0 +1,192 @@
+
+
+#= unrotated surcace code with top corner of the form
+Q - X - (etc) 
+|   |
+Z - Q - (etc)
+|   |
+(etc) 
+=#
+
+function SCsyndromez(Xerror)
+    (H,L) = size(Xerror[1])
+    # compute syndrome of Z checks and return a H-1 x L matrix
+    sz = [( 
+        if y == 1
+            xor(Xerror[1][x,y], Xerror[1][x+1,y], Xerror[2][x,y]) 
+        elseif y == L
+            xor(Xerror[1][x,y], Xerror[1][x+1,y], Xerror[2][x,y-1]) 
+        else
+            xor(Xerror[1][x,y], Xerror[1][x+1,y], Xerror[2][x,y], Xerror[2][x,y-1]) 
+        end
+        ) for x in 1:H-1, y in 1:L]
+    return sz
+end
+
+
+function cosetrep(sz,x0)
+    # coset representative in horizontal gauge with bottom right qubit in state x
+    (H,L) = size(sz).+[1,0] 
+    
+    Xrep = Vector{Matrix}(undef,2)
+    Xrep[1] = zeros(Int,H,L)
+    Xrep[2] = zeros(Int,H-1,L-1)
+    for y = 1:L-1
+        if y == 1
+            Xrep[2][:,y] = sz[:,y]
+        else
+            Xrep[2][:,y] = (Xrep[2][:,y-1].+sz[:,y]).%2
+        end
+    end
+    for x = H:-1:1
+        if x == H
+            Xrep[1][x,L] = x0
+        else
+            Xrep[1][x,L] = (Xrep[1][x+1,L] + Xrep[2][x,L-1] + sz[x,L] )%2
+        end
+    end
+    return Xrep
+end
+
+function cosetrep_from_error(Xerror)
+    Xrep = Xerror
+    (H,L) = size(Xerror[1])
+    for y = 1:L-1
+        for x = 1:H
+            x0 = Xrep[1][x,y]
+            Xrep[1][x,y] = 0
+
+            Xrep[1][x,y+1] = (Xrep[1][x,y+1] + x0)%2
+            if x!= 1
+                Xrep[2][x-1,y] = (Xrep[2][x-1,y] + x0)%2
+            end
+            if x!=H
+                Xrep[2][x,y] = (Xrep[2][x,y] + x0)%2
+            end
+        end
+    end
+    return Xrep
+end
+
+
+
+@argcheck (L = 15; # number of qubits in the top row
+H = 15; # number of qubits in the left collumn
+px = 0.05;
+q = px/(1-px);
+Xerror = (rand(Bernoulli(px),H,L),rand(Bernoulli(px),H-1,L-1)) ;
+nZerros = sum( sum(Xerror[i]) for i in 1:2);
+sz = SCsyndromez(Xerror);
+SCsyndromez(cosetrep(sz,0))==sz)
+
+#mapping to bound state
+
+
+function surfacecode_simulateerrorX(H,L,px) 
+    # generate H x L surface code with qubits on the corners and Z check at (2,1)
+    # returns 
+    #   H-1 x L array of Z syndromes
+    #   (H x L) and (H-1 x L-1) arrays of qubits X errors
+
+    Xerror = (rand(Bernoulli(px),H,L),rand(Bernoulli(px),H-1,L-1)) 
+    nXerrors = sum( sum(Xerror[i]) for i in 1:2)
+    sz = SCsyndromez(Xerror)
+    #@info "$H x $L surface code with $nXerrors X errors violating $(sum(sz)) Z checks"
+    return (sz,Xerror)
+end
+
+function surfacecode_bondstateX(sz,px)
+    # given a H-1 x L array of Z syndromes
+    # generate an H x L+1 ising model 
+    #       where the bottom corners are free 
+    #       and the left and right borders are shorts
+    (H,L) = size(sz).+[1,0]
+
+    (Hbs,Lbs) = (H,L+1)
+    q = px/(1-px)
+    Xrep = cosetrep(sz,0)
+    bondh = map(x->ComplexF64(q.^(1 -x)),Xrep[1])
+    bondv = Matrix{ComplexF64}(undef,Hbs-1,Lbs)
+    bondv[:,1].=0
+    bondv[:,2:Lbs-1] = map(x->ComplexF64(q.^(1 -x)),Xrep[2])#q.^(1 .- 2*Xrep[2])
+    bondv[:,Lbs].=0
+    #bondv = [zeros(Hbs-1,1) q.^(1 .- 2*Xrep[2]) zeros(Hbs-1,1)]
+    bondd = ones(ComplexF64,Hbs-1,Lbs-1)
+    return Bondstate(Hbs,Lbs,bondh,bondv,bondd)
+end
+
+function surfacecode_decode(sz,px)
+    bs = surfacecode_bondstateX(sz,px)
+    (R,a) = fullsimplification!(bs)
+    coset = Int(a<=1)
+    loglikelyhood = log(10,a)
+    return (coset,loglikelyhood)
+end
+
+function surfacecode_checksolution(Xerror,sz,coset)
+    Xerrorrep = cosetrep_from_error(Xerror)
+    Xrepsol = cosetrep(sz,1-coset)
+
+    success = all( Xerrorrep[i]==Xrepsol[i] for i in 1:2)
+    #= Base.display(Xerrorrep[1])
+    Base.display(Xrepsol[1])
+    Base.display(Xerrorrep[2])
+    Base.display(Xrepsol[2]) =#
+    return success
+end 
+   
+
+function surfacecode_simulate(H,L,px)
+    (sz,Xerror) =  surfacecode_simulateerrorX(H,L,px)
+    #ans = @timed(
+    (coset,loglikelyhood)  = surfacecode_decode(sz,px)
+    #)
+    #t = ans[2]
+    success = surfacecode_checksolution(Xerror,sz,coset)
+    #@info "decoding successful : $success, in t=$(t) seconds, with loglikelyhood = $loglikelyhood"
+    return success
+end 
+
+function surfacecode_simulate_many(H::Int,L::Int,px;maxtrials=1000,maxfailure=100)
+    nfailure = 0
+    ntrials = 0
+    nabort = 0
+    decodingsuccess = 0
+    while nfailure <= maxfailure && ntrials <= maxtrials
+        decodingsuccess = 0
+        try 
+            decodingsuccess = surfacecode_simulate(H,L,px)
+            nfailure += (1-decodingsuccess)
+        catch 
+            nabort += 1
+        end
+        
+        ntrials += 1
+    end
+    failurerate = nfailure/ntrials
+    abortrate = nabort/ntrials
+    return (failurerate,abortrate)
+end 
+
+function surfacecode_errorcurve(H::Int,L::Int,prange;maxtrials=1000,maxfailure=100)
+    prob = zeros(length(prange))
+    for i in eachindex(prange)
+        @info "p = $(prange[i])"
+        prob[i] = surfacecode_simulate_many(H,L,prange[i];maxtrials=maxtrials,maxfailure=maxfailure)
+    end
+    return prob
+end 
+
+function surfacecode_thresholdcurve(Lrange,prange;maxtrials=1000,maxfailure=100)
+    proball = zeros(length(Lrange),length(prange))
+    for l in 1:length(Lrange)
+        @info "L = $(Lrange[l])"
+        prob = surfacecode_errorcurve(Lrange[l],Lrange[l],prange,maxtrials=maxtrials,maxfailure=maxfailure)
+        proball[l,:] = prob
+    end
+    return proball
+end
+
+
+
+# test 
