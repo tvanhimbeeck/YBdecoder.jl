@@ -105,11 +105,11 @@ function surfacecode_bondstateX(sz,px)
     (Hbs,Lbs) = (H,L+1)
     q = px/(1-px)
     Xrep = cosetrep(sz,0)
-    bondh = map(x->ComplexF64(q.^(1 -x)),Xrep[1])
+    bondh = map(x->ComplexF64(q^(1-2*x)),Xrep[1])
     bondv = Matrix{ComplexF64}(undef,Hbs-1,Lbs)
-    bondv[:,1].=0
-    bondv[:,2:Lbs-1] = map(x->ComplexF64(q.^(1 -x)),Xrep[2])#q.^(1 .- 2*Xrep[2])
-    bondv[:,Lbs].=0
+    bondv[:,1] .= 0
+    bondv[:,2:Lbs-1] = map(x->ComplexF64(q^(1 -2*x)),Xrep[2])#q.^(1 .- 2*Xrep[2])
+    bondv[:,Lbs] .= 0
     #bondv = [zeros(Hbs-1,1) q.^(1 .- 2*Xrep[2]) zeros(Hbs-1,1)]
     bondd = ones(ComplexF64,Hbs-1,Lbs-1)
     return Bondstate(Hbs,Lbs,bondh,bondv,bondd)

@@ -49,6 +49,7 @@ function transfer(v0,a,b,c,d)
     (R1,(v1,B,A)) = DeltaY(v0,a,b)
     (R2,(v2,D,C)) = YDelta(v1,c,d)
     R = R1*R2
+    @argcheck !any(isnan.((v2,A,B,C,D))) "NaN error when applying diagtransfer from $((v0,a,b,c,d)) to $((v2,A,B,C,D))"
     return (R,(v2,A,B,C,D))
 end
 function transfer_exceptions(v0::T,a::T,b::T,c::T,d::T)::Tuple{T,NTuple{5,T}} where {T<:Number}

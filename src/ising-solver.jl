@@ -23,18 +23,19 @@ end
 ## displays
 function display(bs::Bondstate{T}) where {T}
     
-    M = spzeros(T,2bs.H-1,2bs.L-1)
+    T2 = ComplexF16
+    M = Matrix{Union{String,T2}}(undef,2bs.H-1,2bs.L-1)
     for i = 1:bs.H, j = 1:bs.L
-        M[2i-1,2j-1] = 0
+        M[2i-1,2j-1] = "o"
     end
     for i = 1:bs.H, j = 1:bs.L-1
-        M[2i-1,2j] = bs.h[i,j]
+        M[2i-1,2j] = T2(bs.h[i,j])
     end
     for i = 1:bs.H-1, j = 1:bs.L
-        M[2i,2j-1] = bs.v[i,j]
+        M[2i,2j-1] = T2(bs.v[i,j])
     end
     for i = 1:bs.H-1, j = 1:bs.L-1
-        M[2i,2j] = bs.d[i,j]
+        M[2i,2j] = T2(bs.d[i,j])
     end
     Base.display(M)
 end
@@ -89,9 +90,15 @@ function diagpropagation!(x::Int,y::Int,bs::Bondstate{T}) where {T<:Number}
     @argcheck map(typeof,(v0,a,b,c,d))==(T,T,T,T,T)
 
     input = (v0,a,b,c,d)
-    (R,ans) = transfer_exceptions(input...)
-    (v2,A,B,C,D) = ans
-    @argcheck !any(isnan.((v2,A,B,C,D))) == true "NaN error when applying diagtransfer $((v0,a,b,c,d)) to $((v2,A,B,C,D)) at vertex $((x,y))"
+   
+    try
+        (R,ans) = transfer_exceptions(input...)
+        (v2,A,B,C,D) = ans
+    catch
+        error("error at vertex $((x,y))")
+        R = T(NaN)
+        (v2,A,B,C,D) = T.((NaN,NaN,NaN,NaN))
+    end
 
     bs.R *= R
     bs.d[x-1,y-1] = 1
@@ -100,7 +107,8 @@ function diagpropagation!(x::Int,y::Int,bs::Bondstate{T}) where {T<:Number}
     bs.v[x-1,y] = B
     bs.v[x,y] = C
     bs.h[x,y] = D
-    
+
+    #@info "transfer $((v0,a,b,c,d))  ->  $((v2,A,B,C,D))"
     #R2 = exactsummation_fixedcorners(bs,0,0)
 #=     if abs(R1/R2-1)>0.001
         @info "non exact bond propagation R1 = $(R1) -> R2 = $(R2) at vertex $((x,y))"
