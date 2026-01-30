@@ -6,6 +6,21 @@ Dval(K,ind) = prod( K[(i)+1]^xor(ind[(i+1)%3+1],ind[(i+2)%3+1]) for i = 0:2)
 function YDelta(j1::Number,j2::Number,j3::Number) 
     @argcheck !isnan(j1) && !isnan(j2) && !isnan(j3) "Nan numbers in YDelta : $((j1,j2,j3))"
     
+
+
+    if j1==0                        # j1 is special
+        return (1,(1,j3,j2))
+    elseif abs(j1)==Base.Inf
+        return (1,(1,1/j3,1/j2))
+    elseif j2 == 0                  # j2 is special 
+        return (1,(j3,1,j2))
+    elseif abs(j2) == Base.Inf
+        return (1,(1/j3,1,1/j2))
+    elseif j3 == 0                  # j3 is special 
+        return (1,(j2,j1,1))
+    elseif abs(j3) == Base.Inf
+        return (1,(1/j2,1/j1,1)) 
+    end
     z0 = 1 + j1*j2*j3
     z1 = j1 + j2*j3 
     z2 = j2 + j1*j3 
@@ -15,10 +30,18 @@ function YDelta(j1::Number,j2::Number,j3::Number)
     k1 = k/z1
     k2 = k/z2
     k3 = k/z3
-    return (z0,(k1,k2,k3))
+    return (1,(k1,k2,k3))
 end
 
-dual(x::Number) = (1-x)/(1+x)
+#dual(x::Number) = (1-x)/(1+x)
+function dual(x::T)::T where {T<:Number}
+    if abs(x) == Base.Inf
+        return -1
+    elseif x == -1
+        return Base.Inf
+    end
+    return (1-x)/(1+x)
+end
 
 function DeltaY(k1::Number,k2::Number,k3::Number)
     
@@ -28,8 +51,8 @@ function DeltaY(k1::Number,k2::Number,k3::Number)
     (_,Jprim) = YDelta( Kprim...)
     J = map(dual,Jprim)
     
-    ind = (0,0,0)
-    R = Dval(K,ind)/Yval(J,ind)
+    #ind = (0,0,0)
+    #R = Dval(K,ind)/Yval(J,ind)
   
     return (R,J)
 end
