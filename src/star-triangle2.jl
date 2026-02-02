@@ -3,6 +3,17 @@
 
 Yval(J,ind) = sum( prod( J[i]^xor(s,ind[i]) for i = 1:3) for s = 0:1)
 Dval(K,ind) = prod( K[(i)+1]^xor(ind[(i+1)%3+1],ind[(i+2)%3+1]) for i = 0:2)
+
+function linearcombine(j1::T,j2::T)::T where {T<:Number}
+    if j1==Inf
+        return 1/abs(j2)
+    elseif j2==Inf
+        return 1/abs(j1)
+    else
+        return (j1+j2)/(1+j1*j2)
+    end
+end
+
 function YDelta(j1::Number,j2::Number,j3::Number) 
     @argcheck !isnan(j1) && !isnan(j2) && !isnan(j3) "Nan numbers in YDelta : $((j1,j2,j3))"
     
