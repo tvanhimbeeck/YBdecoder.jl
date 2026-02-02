@@ -18,7 +18,14 @@ function YDelta(j1::Number,j2::Number,j3::Number)
     return (z0,(k1,k2,k3))
 end
 
-dual(x::Number) = (1-x)/(1+x)
+function dual(x::T)::T where {T<:Number}
+    if abs(x) == Base.Inf
+        return -1
+    elseif x == -1
+        return Base.Inf
+    end
+    return (1-x)/(1+x)
+end
 
 function DeltaY(k1::Number,k2::Number,k3::Number)
     
