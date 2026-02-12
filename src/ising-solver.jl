@@ -97,7 +97,7 @@ function diagpropagation!(x::Int,y::Int,bs::Bondstate{T}) where {T<:Number}
         (R,ans) = transfer_exceptions(input...)
         (v2,A,B,C,D) = ans
     catch
-        error("error during transfer at vertex $((x,y)) with input $input")
+        error("error during transfer at vertex $((x,y)) out of $((bs.H,bs.L)) with input $input")
     end
     if any(map(isnan,(v2,A,B,C,D)))
         error("nan error during transfer at vertex $((x,y)) with input $input and output $((v2,A,B,C,D))")
