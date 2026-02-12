@@ -9,6 +9,8 @@ function linearcombine(j1::T,j2::T)::T where {T<:Number}
         return 1/abs(j2)
     elseif j2==Inf
         return 1/abs(j1)
+    elseif j1*j2==-1
+        return Inf
     else
         return (j1+j2)/(1+j1*j2)
     end

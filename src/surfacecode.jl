@@ -1,5 +1,3 @@
-
-
 #= unrotated surcace code with top corner of the form
 Q - X - (etc) 
 |   |
@@ -117,7 +115,7 @@ end
 
 function surfacecode_decode(sz,px)
     bs = surfacecode_bondstateX(sz,px)
-    (R,a) = fullsimplification!(bs)
+    (R,a) = fullsimplification2!(bs)
     coset = Int(a<=1)
     loglikelyhood = log(10,a)
     return (coset,loglikelyhood)
@@ -126,22 +124,14 @@ end
 function surfacecode_checksolution(Xerror,sz,coset)
     Xerrorrep = cosetrep_from_error(Xerror)
     Xrepsol = cosetrep(sz,1-coset)
-
     success = all( Xerrorrep[i]==Xrepsol[i] for i in 1:2)
-    #= Base.display(Xerrorrep[1])
-    Base.display(Xrepsol[1])
-    Base.display(Xerrorrep[2])
-    Base.display(Xrepsol[2]) =#
     return success
 end 
    
 
 function surfacecode_simulate(H,L,px)
     (sz,Xerror) =  surfacecode_simulateerrorX(H,L,px)
-    #ans = @timed(
     (coset,loglikelyhood)  = surfacecode_decode(sz,px)
-    #)
-    #t = ans[2]
     success = surfacecode_checksolution(Xerror,sz,coset)
     #@info "decoding successful : $success, in t=$(t) seconds, with loglikelyhood = $loglikelyhood"
     return success
@@ -153,6 +143,7 @@ function surfacecode_simulate_many(H::Int,L::Int,px;maxtrials=1000,maxfailure=10
     nabort = 0
     decodingsuccess = 0
     while nfailure + nabort <= maxfailure && ntrials <= maxtrials
+        ntrials += 1
         decodingsuccess = 0
         try 
             decodingsuccess = surfacecode_simulate(H,L,px)
@@ -160,11 +151,10 @@ function surfacecode_simulate_many(H::Int,L::Int,px;maxtrials=1000,maxfailure=10
         catch 
             nabort += 1
         end
-        
-        ntrials += 1
     end
     failurerate = nfailure/ntrials
     abortrate = nabort/ntrials
+    @info "L=$L, H=$H, p=$px, failurerate=$failurerate, abortrate=$abortrate, ntrials=$ntrials"
     return (failurerate,abortrate)
 end 
 
@@ -176,6 +166,24 @@ function surfacecode_errorcurve(H::Int,L::Int,prange;maxtrials=1000,maxfailure=1
         (er,ar)  = surfacecode_simulate_many(H,L,prange[i];maxtrials=maxtrials,maxfailure=maxfailure)
         errorrate[i] = er
         abortrate[i] = ar
+    end
+    return (errorrate,abortrate)
+end 
+
+# proceeds in reverse order to avoir high suppression region
+function surfacecode_errorcurve_fast(H::Int,L::Int,prange;maxtrials=1000,maxfailure=100)
+    errorrate = zeros(length(prange))
+    abortrate = zeros(length(prange))
+    for i in length(prange):-1:1
+        @info "p = $(prange[i])"
+        (er,ar)  = surfacecode_simulate_many(H,L,prange[i];maxtrials=maxtrials,maxfailure=maxfailure)
+        errorrate[i] = er
+        abortrate[i] = ar
+        if er+ar<=sqrt(maxfailure)/maxtrial
+            errorrate[1:i-1] = 0
+            abortrate[1:i-1] = 0
+            break
+        end
     end
     return (errorrate,abortrate)
 end 

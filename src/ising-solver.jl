@@ -1,6 +1,4 @@
-
-
-## initalizations of ising models
+# initalizations of ising models
 function initialize(H::Int,L::Int,q::T) where {T<:Number}
     # initialize variables
     bondh = q*ones(T,H,L-1)
@@ -18,9 +16,7 @@ function triangle(q)
     return Bondstate(H,L,h,v,d)
 end
 
-
-
-## displays
+# displays
 function display(bs::Bondstate{T}) where {T}
     
     T2 = ComplexF16
@@ -51,6 +47,8 @@ function displaysimp(bs::Bondstate)
             M[2i-1,2j] = " "
         elseif bs.h[i,j] == 0
             M[2i-1,2j] = "=="
+        elseif abs(bs.h[i,j]) == Inf
+            M[2i-1,2j] = "∞"
         else
             M[2i-1,2j] = "--"
         end
@@ -60,6 +58,8 @@ function displaysimp(bs::Bondstate)
             M[2i,2j-1] = " "
         elseif bs.v[i,j] == 0
             M[2i,2j-1] = "||"
+        elseif abs(bs.v[i,j]) == Inf
+            M[2i,2j-1] = "∞"
         else
             M[2i,2j-1] = "|" 
         end
@@ -72,7 +72,7 @@ end
 
 
 
-## bondpropagation algorithm
+# bondpropagation algorithm
 function diagpropagation!(x::Int,y::Int,bs::Bondstate{T}) where {T<:Number}
 
     @argcheck (0 <= x <= bs.H) && (0<= y <= bs.L)
@@ -102,6 +102,9 @@ function diagpropagation!(x::Int,y::Int,bs::Bondstate{T}) where {T<:Number}
     if any(map(isnan,(v2,A,B,C,D)))
         error("nan error during transfer at vertex $((x,y)) with input $input and output $((v2,A,B,C,D))")
     end
+#=     if any(map(x->abs(x)==Inf,(v2,A,B,C,D)))
+        error("Inf error during transfer at vertex $((x,y)) with input $input and output $((v2,A,B,C,D))")
+    end =#
 
     bs.R *= R
     bs.d[x-1,y-1] = 1
@@ -120,6 +123,30 @@ function diagpropagation!(x::Int,y::Int,bs::Bondstate{T}) where {T<:Number}
     return bs.R
 end
 
+function fullsimplification2!(bs) # uses a different order
+    for mainiter in 0:bs.L+bs.H
+        diagrange = (2+mainiter,2+2*mainiter)
+        for diag in min(diagrange[2],bs.L+bs.H):-1:diagrange[1]
+            for x in max(1,diag - 1 - mainiter,diag-bs.L):1:min(bs.H,1+mainiter,diag-1)
+                y = diag-x
+                #@info (x,y)
+                diagpropagation!(x,y,bs)
+                #displaysimp(bs)
+            end
+        end
+    end
+    
+#=     for delta2 = 2:bs.L+bs.H # row
+        for delta1 = max(2-delta2,delta2-2*bs.L):2:min(2*bs.H-delta2,delta2-2)
+            diagonalsimplification!(bs,delta1,delta2)
+        end
+    end =#
+    #@argcheck all(bs.h[1:H-1,:] .==1) && all(bs.v .==1) && all(bs.d .==1) && all((bs.h[H,:])[1:L-2].==0)
+    #@argcheck isapprox(bs.R,real(bs.R);rtol = 1e-8 )
+    #@argcheck isapprox(bs.h[bs.H,bs.L-1],real(bs.h[bs.H,bs.L-1]); rtol=1e-8)
+    return (real(bs.R),real(bs.h[bs.H,bs.L-1]))
+end
+
 function diagonalsimplification!(bs::Bondstate,delta1::Int,delta2::Int)
     
     x = Int((delta2 + delta1)/2)
@@ -129,11 +156,19 @@ function diagonalsimplification!(bs::Bondstate,delta1::Int,delta2::Int)
     while x<=bs.H && y<=bs.L
         #@info "process diagonal $(x+y)"
         diagpropagation!(x,y,bs)
-        #display(bs)
+        #displaysimp(bs)
         x+=1
         y+=1
     end
 end
+
+#= 2 
+4 3
+6 5 4
+8 7 6 5
+10 9 8 7 6 =#
+
+
 
 function fullsimplification!(bs)
     for delta2 = 2:bs.L+bs.H
