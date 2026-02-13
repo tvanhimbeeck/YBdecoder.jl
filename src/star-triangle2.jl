@@ -1,5 +1,5 @@
 # provides star-triangle relationships in the xor representation
-
+const epsilon = 0
 
 Yval(J,ind) = sum( prod( J[i]^xor(s,ind[i]) for i = 1:3) for s = 0:1)
 Dval(K,ind) = prod( K[(i)+1]^xor(ind[(i+1)%3+1],ind[(i+2)%3+1]) for i = 0:2)
@@ -16,9 +16,19 @@ function linearcombine(j1::T,j2::T)::T where {T<:Number}
     end
 end
 
-function YDelta(j1::Number,j2::Number,j3::Number) 
+function YDelta(j1::Number,j2::Number,j3::Number)
     @argcheck !isnan(j1) && !isnan(j2) && !isnan(j3) "Nan numbers in YDelta : $((j1,j2,j3))"
-    
+    (j1,j2,j3) = map(x->(x==0 ? 0 : x),(j1,j2,j3)) # regularize complex numbers to avoid NaN errors when 1/(0+0im) and have Inf as answer instead
+
+    if abs(j1)==Inf
+        return(0,(1,1/j3,1/j2))
+    elseif abs(j2)==Inf
+        return(0,(1/j3,1,1/j1))
+    elseif abs(j3)==Inf
+        return(0,(1/j2,1/j1,1))
+    end
+
+
     z0 = 1 + j1*j2*j3
     z1 = j1 + j2*j3 
     z2 = j2 + j1*j3 
@@ -32,9 +42,9 @@ function YDelta(j1::Number,j2::Number,j3::Number)
 end
 
 function dual(x::T)::T where {T<:Number}
-    if abs(x) == Base.Inf
+    if abs(x) >= 1/epsilon# Base.Inf
         return -1
-    elseif x == -1
+    elseif abs(x +1) <= epsilon 
         return Base.Inf
     end
     return (1-x)/(1+x)
