@@ -116,8 +116,8 @@ end
 function surfacecode_decode(sz,px)
     bs = surfacecode_bondstateX(sz,px)
     (R,a) = fullsimplification2!(bs)
-    coset = Int(a<=1)
-    loglikelyhood = log(10,a)
+    coset = Int(abs(a)<=1)
+    loglikelyhood = log(10,abs(a))
     return (coset,loglikelyhood)
 end
 
@@ -142,7 +142,22 @@ function surfacecode_simulate_many(H::Int,L::Int,px;maxtrials=1000,maxfailure=10
     ntrials = 0
     nabort = 0
     decodingsuccess = 0
-    while nfailure + nabort <= maxfailure && ntrials <= maxtrials
+
+#=     prog = ProgressUnknown(desc="Decoding: ntrials=")
+    naborts = 0
+    for n in 1:100
+        naborts += (rand()>=0.5)
+        next!(prog; showvalues = [("naborts",naborts)])
+        if n==100
+            finish!(prog)
+            break
+        end
+        sleep(0.1)
+    end =#
+
+
+    prog = ProgressUnknown(desc="Decoding $(H)x$(L) surface codes with p=$px: ntrials(/$maxtrials)=")
+    while true
         ntrials += 1
         decodingsuccess = 0
         try 
@@ -150,6 +165,11 @@ function surfacecode_simulate_many(H::Int,L::Int,px;maxtrials=1000,maxfailure=10
             nfailure += (1-decodingsuccess)
         catch 
             nabort += 1
+        end
+        next!(prog; showvalues = [("nfailure(/$maxfailure)",nfailure),("nabort(/$maxfailure)",nabort),("ntrials",ntrials)])
+        if nfailure + nabort == maxfailure || ntrials == maxtrials
+            finish!(prog)
+            break
         end
     end
     failurerate = nfailure/ntrials
@@ -162,7 +182,7 @@ function surfacecode_errorcurve(H::Int,L::Int,prange;maxtrials=1000,maxfailure=1
     errorrate = zeros(length(prange))
     abortrate = zeros(length(prange))
     for i in eachindex(prange)
-        @info "p = $(prange[i])"
+        #@info "p = $(prange[i])"
         (er,ar)  = surfacecode_simulate_many(H,L,prange[i];maxtrials=maxtrials,maxfailure=maxfailure)
         errorrate[i] = er
         abortrate[i] = ar
