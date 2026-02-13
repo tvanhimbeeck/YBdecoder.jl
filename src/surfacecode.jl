@@ -156,7 +156,7 @@ function surfacecode_simulate_many(H::Int,L::Int,px;maxtrials=1000,maxfailure=10
     end =#
 
 
-    prog = ProgressUnknown(desc="Decoding $(H)x$(L) surface codes with p=$px: ntrials(/$maxtrials)=")
+    prog = ProgressUnknown(desc="Simulating $(H)x$(L) surface code with p=$px",showspeed=true,spinner=true)
     while true
         ntrials += 1
         decodingsuccess = 0
@@ -166,7 +166,7 @@ function surfacecode_simulate_many(H::Int,L::Int,px;maxtrials=1000,maxfailure=10
         catch 
             nabort += 1
         end
-        next!(prog; showvalues = [("nfailure(/$maxfailure)",nfailure),("nabort(/$maxfailure)",nabort),("ntrials",ntrials)])
+        next!(prog; showvalues = [("n failures(/$maxfailure)",nfailure),("failure rate(/$maxfailure)",nfailure/ntrials),("ntrials(/$maxtrials)",ntrials)])
         if nfailure + nabort == maxfailure || ntrials == maxtrials
             finish!(prog)
             break
@@ -190,30 +190,34 @@ function surfacecode_errorcurve(H::Int,L::Int,prange;maxtrials=1000,maxfailure=1
     return (errorrate,abortrate)
 end 
 
-# proceeds in reverse order to avoir high suppression region
+# proceeds in reverse order to avoid high suppression region
 function surfacecode_errorcurve_fast(H::Int,L::Int,prange;maxtrials=1000,maxfailure=100)
     errorrate = zeros(length(prange))
     abortrate = zeros(length(prange))
     for i in length(prange):-1:1
-        @info "p = $(prange[i])"
+        #@info "p = $(prange[i])"
         (er,ar)  = surfacecode_simulate_many(H,L,prange[i];maxtrials=maxtrials,maxfailure=maxfailure)
         errorrate[i] = er
         abortrate[i] = ar
-        if er+ar<=sqrt(maxfailure)/maxtrial
-            errorrate[1:i-1] = 0
-            abortrate[1:i-1] = 0
+        if er+ar<=sqrt(maxfailure)/maxtrials
+            errorrate[1:i-1] .= NaN # nan to indicate unmeasured value
+            abortrate[1:i-1] .= NaN           
             break
         end
     end
     return (errorrate,abortrate)
 end 
 
-function surfacecode_thresholdcurve(Lrange,prange;maxtrials=1000,maxfailure=100)
+function surfacecode_thresholdcurve(Lrange,prange;maxtrials=1000,maxfailure=100,reverse=false)
     errorrates = zeros(length(Lrange),length(prange))
     abortrates = zeros(length(Lrange),length(prange))
     for l in 1:length(Lrange)
         @info "L = $(Lrange[l])"
-        (er,ar) = surfacecode_errorcurve(Lrange[l],Lrange[l],prange,maxtrials=maxtrials,maxfailure=maxfailure)
+        if reverse
+            (er,ar) = surfacecode_errorcurve_fast(Lrange[l],Lrange[l],prange,maxtrials=maxtrials,maxfailure=maxfailure)
+        else
+            (er,ar) = surfacecode_errorcurve(Lrange[l],Lrange[l],prange,maxtrials=maxtrials,maxfailure=maxfailure)
+        end
         errorrates[l,:] = er
         abortrates[l,:] = ar
     end
