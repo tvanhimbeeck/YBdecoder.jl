@@ -1,6 +1,4 @@
 # provides star-triangle relationships in the xor representation
-const epsilon = 0
-
 Yval(J,ind) = sum( prod( J[i]^xor(s,ind[i]) for i = 1:3) for s = 0:1)
 Dval(K,ind) = prod( K[(i)+1]^xor(ind[(i+1)%3+1],ind[(i+2)%3+1]) for i = 0:2)
 
@@ -42,9 +40,9 @@ function YDelta(j1::Number,j2::Number,j3::Number)
 end
 
 function dual(x::T)::T where {T<:Number}
-    if abs(x) >= 1/epsilon# Base.Inf
+    if abs(x) == Base.Inf
         return -1
-    elseif abs(x +1) <= epsilon 
+    elseif x == -1
         return Base.Inf
     end
     return (1-x)/(1+x)
