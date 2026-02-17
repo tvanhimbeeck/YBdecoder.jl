@@ -6,7 +6,7 @@ Z - Q - (etc)
 (etc) 
 =#
 
-function SCsyndromez(Xerror)
+function SCsyndromez(Xerror::Tuple{Matrix{Bool},Matrix{Bool}})::Matrix{Bool}
     (H,L) = size(Xerror[1])
     # compute syndrome of Z checks and return a H-1 x L matrix
     sz = [( 
@@ -26,27 +26,28 @@ function cosetrep(sz,x0)
     # coset representative in horizontal gauge with bottom right qubit in state x
     (H,L) = size(sz).+[1,0] 
     
-    Xrep = Vector{Matrix}(undef,2)
-    Xrep[1] = zeros(Int,H,L)
-    Xrep[2] = zeros(Int,H-1,L-1)
+    Xrep = ( zeros(Bool,H,L), Matrix{Bool}(undef,H-1,L-1) )
+    #Xrep[1] = zeros(Int,H,L)
+    #Xrep[2] = zeros(Int,H-1,L-1)
     for y = 1:L-1
         if y == 1
             Xrep[2][:,y] = sz[:,y]
         else
-            Xrep[2][:,y] = (Xrep[2][:,y-1].+sz[:,y]).%2
+            Xrep[2][:,y] = map(xor, Xrep[2][:,y-1], sz[:,y])
         end
     end
+
     for x = H:-1:1
         if x == H
             Xrep[1][x,L] = x0
         else
-            Xrep[1][x,L] = (Xrep[1][x+1,L] + Xrep[2][x,L-1] + sz[x,L] )%2
+            Xrep[1][x,L] = xor(Xrep[1][x+1,L], Xrep[2][x,L-1], sz[x,L] )
         end
     end
     return Xrep
 end
 
-function cosetrep_from_error(Xerror)
+function cosetrep_from_error(Xerror::Tuple{Matrix{Bool},Matrix{Bool}})::Tuple{Matrix{Bool},Matrix{Bool}}
     Xrep = Xerror
     (H,L) = size(Xerror[1])
     for y = 1:L-1
@@ -54,12 +55,12 @@ function cosetrep_from_error(Xerror)
             x0 = Xrep[1][x,y]
             Xrep[1][x,y] = 0
 
-            Xrep[1][x,y+1] = (Xrep[1][x,y+1] + x0)%2
+            Xrep[1][x,y+1] = xor(Xrep[1][x,y+1], x0)
             if x!= 1
-                Xrep[2][x-1,y] = (Xrep[2][x-1,y] + x0)%2
+                Xrep[2][x-1,y] = xor(Xrep[2][x-1,y], x0)
             end
             if x!=H
-                Xrep[2][x,y] = (Xrep[2][x,y] + x0)%2
+                Xrep[2][x,y] = xor(Xrep[2][x,y], x0)
             end
         end
     end
@@ -80,14 +81,14 @@ SCsyndromez(cosetrep(sz,0))==sz)
 #mapping to bound state
 
 
-function surfacecode_simulateerrorX(H,L,px) 
+function surfacecode_simulateerrorX(H::Int,L::Int,px::Number) 
     # generate H x L surface code with qubits on the corners and Z check at (2,1)
     # returns 
     #   H-1 x L array of Z syndromes
     #   (H x L) and (H-1 x L-1) arrays of qubits X errors
 
     Xerror = (rand(Bernoulli(px),H,L),rand(Bernoulli(px),H-1,L-1)) 
-    nXerrors = sum( sum(Xerror[i]) for i in 1:2)
+    #nXerrors = sum( sum(Xerror[i]) for i in 1:2)
     sz = SCsyndromez(Xerror)
     #@info "$H x $L surface code with $nXerrors X errors violating $(sum(sz)) Z checks"
     return (sz,Xerror)
@@ -101,13 +102,20 @@ function surfacecode_bondstateX(sz,px)
     (H,L) = size(sz).+[1,0]
 
     (Hbs,Lbs) = (H,L+1)
-    q = px/(1-px)
+
+    
+    q = ComplexF64(px/(1-px))
     Xrep = cosetrep(sz,0)
-    bondh = map(x->ComplexF64(q^(1-2*x)),Xrep[1])
-    bondv = Matrix{ComplexF64}(undef,Hbs-1,Lbs)
+    bondh = map( x-> (x==false ? q : 1/q), Xrep[1])
+    
+    
+    bondv = ComplexF64[ (j==1 || j==Lbs) ? zero(ComplexF64) : (Xrep[2][i,j-1] == true ? 1/q : q)
+                for i in 1:Hbs-1, j in 1:Lbs
+            ]   
+    #= bondv = Matrix{ComplexF64}(undef,Hbs-1,Lbs)
     bondv[:,1] .= 0
     bondv[:,2:Lbs-1] = map(x->ComplexF64(q^(1 -2*x)),Xrep[2])#q.^(1 .- 2*Xrep[2])
-    bondv[:,Lbs] .= 0
+    bondv[:,Lbs] .= 0 =#
     #bondv = [zeros(Hbs-1,1) q.^(1 .- 2*Xrep[2]) zeros(Hbs-1,1)]
     bondd = ones(ComplexF64,Hbs-1,Lbs-1)
     return Bondstate(Hbs,Lbs,bondh,bondv,bondd)

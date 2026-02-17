@@ -94,7 +94,7 @@ function transfer_exceptions(v0::T,a::T,b::T,c::T,d::T)::Tuple{T,NTuple{5,T}} wh
         return ((one(T)+c*d)/2, (linearcombine(c,d),one(T),one(T),one(T),one(T)))   ###### divied by 2 here #############
     elseif (b,c,d)==(0,0,1) || (b,c,d)==(0,1,1)      
         # diagonal arriving on right border (or bottom right corner) -> fuse the diagonal and horizontal edges
-        return (1,(1,v0*a,b,c,d))
+        return (one(T),(one(T),v0*a,b,c,d))
     elseif (v0,b,c)==(1,1,1)            
         # --o-- to ==o-- on the bottom border
         return (1+a*d,(one(T),zero(T),one(T),one(T),linearcombine(a,d)))
