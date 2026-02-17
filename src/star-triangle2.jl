@@ -16,7 +16,7 @@ end
 
 function YDelta(j1::T,j2::T,j3::T)::Tuple{T,NTuple{3,T}} where {T<:Number}
     @argcheck !isnan(j1) && !isnan(j2) && !isnan(j3) "Nan numbers in YDelta : $((j1,j2,j3))"
-    (j1,j2,j3) = map(x->(x==0 ? 0 : x),(j1,j2,j3)) # regularize complex numbers to avoid NaN errors when 1/(0+0im) and have Inf as answer instead
+    (j1,j2,j3) = map(x->(x==0 ? zero(T) : x),(j1,j2,j3)) # regularize complex numbers to avoid NaN errors when 1/(0+0im) and have Inf as answer instead
 
     if abs(j1)==Inf
         return(zero(T),(one(T),1/j3,1/j2))
@@ -57,7 +57,7 @@ function DeltaY(k1::T,k2::T,k3::T)::Tuple{T,NTuple{3,T}} where {T<:Number}
     J = map(dual,Jprim)
     
     ind = (0,0,0)
-    R = Dval(K,ind)/Yval(J,ind)
+    R = zero(T)#Dval(K,ind)/Yval(J,ind) ## emoved normalization here
   
     return (R,J)
 end
