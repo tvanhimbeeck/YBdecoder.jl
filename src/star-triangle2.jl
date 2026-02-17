@@ -14,16 +14,16 @@ function linearcombine(j1::T,j2::T)::T where {T<:Number}
     end
 end
 
-function YDelta(j1::Number,j2::Number,j3::Number)
+function YDelta(j1::T,j2::T,j3::T)::Tuple{T,NTuple{3,T}} where {T<:Number}
     @argcheck !isnan(j1) && !isnan(j2) && !isnan(j3) "Nan numbers in YDelta : $((j1,j2,j3))"
     (j1,j2,j3) = map(x->(x==0 ? 0 : x),(j1,j2,j3)) # regularize complex numbers to avoid NaN errors when 1/(0+0im) and have Inf as answer instead
 
     if abs(j1)==Inf
-        return(0,(1,1/j3,1/j2))
+        return(zero(T),(one(T),1/j3,1/j2))
     elseif abs(j2)==Inf
-        return(0,(1/j3,1,1/j1))
+        return(zero(T),(1/j3,one(T),1/j1))
     elseif abs(j3)==Inf
-        return(0,(1/j2,1/j1,1))
+        return(zero(T),(1/j2,1/j1,one(T)))
     end
 
 
@@ -48,7 +48,7 @@ function dual(x::T)::T where {T<:Number}
     return (1-x)/(1+x)
 end
 
-function DeltaY(k1::Number,k2::Number,k3::Number)
+function DeltaY(k1::T,k2::T,k3::T)::Tuple{T,NTuple{3,T}} where {T<:Number}
     
     K = (k1,k2,k3)
     Kprim = map(dual,K)
@@ -77,7 +77,7 @@ function transfer(v0,a,b,c,d)
     (R1,(v1,B,A)) = DeltaY(v0,a,b)
     (R2,(v2,D,C)) = YDelta(v1,c,d)
     R = R1*R2
-    @argcheck !any(isnan.((v2,A,B,C,D))) "NaN error when applying diagtransfer from $((v0,a,b,c,d)) to $((v2,A,B,C,D))"
+    @argcheck all(map(x->!isnan(x),(v2,A,B,C,D))) "NaN error when applying diagtransfer from $((v0,a,b,c,d)) to $((v2,A,B,C,D))"
     return (R,(v2,A,B,C,D))
 end
 function transfer_exceptions(v0::T,a::T,b::T,c::T,d::T)::Tuple{T,NTuple{5,T}} where {T<:Number}

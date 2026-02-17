@@ -10,7 +10,6 @@ function Base.getindex(A::ExtMatrix{T},i,j)::T where {T<:Number}
         return A.M[i,j]
     end 
 end
-1+1
 function Base.setindex!(A::ExtMatrix{T},v,i,j) where {T<:Number}
     if 1<=i<=size(A.M,1) && 1<=j<=size(A.M,2)
         A.M[i,j] = v
