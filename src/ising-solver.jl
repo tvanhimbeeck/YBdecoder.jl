@@ -84,23 +84,22 @@ function diagpropagation!(x::Int,y::Int,bs::Bondstate{T}) where {T<:Number}
     #R1 = exactsummation_fixedcorners(bs,0,0)
 
     v0 = bs.d[x-1,y-1]
+    #= if v0==1
+        return zeros(T)
+    end =#
     (a,b) = (bs.h[x,y-1],bs.v[x-1,y])
     (c,d) = (bs.v[x,y],bs.h[x,y])
-    
-    @argcheck map(typeof,(v0,a,b,c,d))==(T,T,T,T,T)
-
-    input = (v0,a,b,c,d)
     
     R = T(0)
     (v2,A,B,C,D) = T.((0,0,0,0,0))
     try
-        (R,ans) = transfer_exceptions(input...)
+        (R,ans) = transfer_exceptions(v0,a,b,c,d)
         (v2,A,B,C,D) = ans
     catch
-        error("error during transfer at vertex $((x,y)) out of $((bs.H,bs.L)) with input $input")
+        error("error during transfer at vertex $((x,y)) out of $((bs.H,bs.L)) with input $((v0,a,b,c,d)))")
     end
     if any(map(isnan,(v2,A,B,C,D)))
-        error("nan error during transfer at vertex $((x,y)) with input $input and output $((v2,A,B,C,D))")
+        error("nan error during transfer at vertex $((x,y)) with input $((v0,a,b,c,d)) and output $((v2,A,B,C,D))")
     end
 #=     if any(map(x->abs(x)==Inf,(v2,A,B,C,D)))
         error("Inf error during transfer at vertex $((x,y)) with input $input and output $((v2,A,B,C,D))")

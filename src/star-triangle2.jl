@@ -41,7 +41,7 @@ end
 
 function dual(x::T)::T where {T<:Number}
     if abs(x) == Base.Inf
-        return -1
+        return -one(T)
     elseif x == -1
         return Base.Inf
     end
